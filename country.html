@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Country Explorer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            padding: 24px;
+            background: gray;
+            color: #1f2d3d;
+            transition: background 0.4s ease;
+        }
+
+        .wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 24px;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
+            margin: 10px 5px 30px 30px;
+        }
+
+        .hero h1 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            color: #14253f;
+        }
+
+        .hero p {
+            color: #5d697a;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 260px;
+            padding: 12px 14px;
+            border-radius: 999px;
+            border: 1px solid #cdd9e8;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        .search-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+        }
+
+        .btn {
+            border: none;
+            padding: 12px 16px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+        }
+
+        .btn.reset {
+            background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+        }
+
+        .btn.pop {
+            background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
+        }
+
+        .btn.lang {
+            background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 240px));
+            gap: 55px;
+            justify-content: center;
+        }
+
+        .card {
+            background: rgb(224, 221, 221);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 14px 35px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            width: 270px;
+            height: 420px;
+        }
+
+        .card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            display: block;
+            flex-shrink: 0;
+        }
+
+        .card-body {
+            padding: 16px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+        }
+
+        .card-body h3 {
+            margin-bottom: 8px;
+            color: #14253f;
+        }
+
+        .card-body p {
+            margin-bottom: 6px;
+            color: #4b5563;
+            font-size: 0.95rem;
+        }
+
+        .empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 28px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 18px;
+            color: #4b5563;
+            border: 1px dashed #bfc9d6;
+        }
+
+        @media (max-width: 640px) {
+            .hero {
+                padding: 20px;
+            }
+
+            .hero h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <section class="hero">
+            <h1>Country Explorer</h1>
+            <p>Search for a country by name or capital. Use the buttons to sort by population or language.</p>
+
+            <div class="controls">
+                <input id="searchInput" class="search-input" type="text" placeholder="Enter country or capital" oninput="filterCountries()">
+                <button class="btn" onclick="changeBackground()">Change background color</button>
+                <button class="btn reset" onclick="resetBackground()">Reset background color</button>
+                <button class="btn pop" onclick="sortByPopulation()">Select country by population</button>
+                <button class="btn lang" onclick="sortByLanguage()">Select country by language</button>
+            </div>
+        </section>
+
+        <section id="countryCards" class="cards"></section>
+    </div>
+
+    <script src="ca.js"></script>
+    <script>
+        let defaultBackground = "gray"
+        let bgColors = [
+            "gray",
+            "pink",
+            "blue",
+            "red"
+        ];
+        let bgIndex = 0
+
+        let searchInput = document.getElementById("searchInput")
+        let cardsContainer = document.getElementById("countryCards")
+        let currentSort = "none"
+        let populationOrder = "small"
+        let languageOrder = "small"
+
+        function showCountries(list) {
+            if (list.length === 0) {
+                cardsContainer.innerHTML = '<div class="empty">No country matches that search.</div>'
+                return
+            }
+
+            let cardHtml = "";
+
+            for (let i = 0; i < list.length; i++) {
+                let country = list[i]
+                let languageText = country.languages.join(", ")
+                let capitalText = country.capital || "N/A"
+                let regionText = country.region || "N/A"
+                let areaText = country.area ? country.area.toLocaleString() : "N/A"
+
+                cardHtml += `
+                    <div class="card">
+                        <img src="${country.flag}" alt="${country.name} flag" loading="lazy">
+                        <div class="card-body">
+                            <h3>${country.name}</h3>
+                            <p><strong>Capital:</strong> ${capitalText}</p>
+                            <p><strong>Population:</strong> ${country.population.toLocaleString()}</p>
+                            <p><strong>Languages:</strong> ${languageText}</p>
+                            <p><strong>Region:</strong> ${regionText}</p>
+                            <p><strong>Area:</strong> ${areaText}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            cardsContainer.innerHTML = cardHtml;
+        }
+
+        function filterCountries() {
+            let searchText = searchInput.value.toLowerCase();
+            let found = [];
+
+            for (let i = 0; i < countries.length; i++) {
+              let country = countries[i]
+              let nameText = country.name.toLowerCase()
+              let capitalText = (country.capital || "").toLowerCase()
+             if (nameText.includes(searchText) || capitalText.includes(searchText)){
+                found.push(country)
+             }
+            }
+
+            if (currentSort === "population") {
+                found = sortPopulation(found);
+            }
+
+            if (currentSort === "language") {
+                found = sortLanguage(found);
+            }
+
+            showCountries(found);
+        }
+
+        function sortPopulation(list) {
+            let newList = list.slice();
+
+            newList.sort(function (a, b) {
+                return a.population - b.population;
+            });
+
+            if (populationOrder === "big") {
+                newList.reverse();
+            }
+
+            return newList;
+        }
+
+        function sortLanguage(list) {
+            let newList = list.slice();
+
+            newList.sort(function (a, b) {
+                return a.languages.length - b.languages.length;
+            });
+
+            if (languageOrder === "big") {
+                newList.reverse();
+            }
+
+            return newList;
+        }
+
+        function changeBackground() {
+            bgIndex = bgIndex + 1;
+            if (bgIndex === bgColors.length) {
+                bgIndex = 0;
+            }
+            document.body.style.background = bgColors[bgIndex];
+        }
+
+        function resetBackground() {
+            document.body.style.background = defaultBackground;
+            bgIndex = 0;
+        }
+
+        function sortByPopulation() {
+            currentSort = "population";
+
+            if (populationOrder === "small") {
+                populationOrder = "big";
+            } else {
+                populationOrder = "small";
+            }
+
+            filterCountries();
+        }
+
+        function sortByLanguage() {
+            currentSort = "language";
+
+            if (languageOrder === "small") {
+                languageOrder = "big";
+            } else {
+                languageOrder = "small";
+            }
+
+            filterCountries();
+        }
+
+        filterCountries();
+    </script>
+</body>
+</html>
